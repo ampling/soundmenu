@@ -14,7 +14,7 @@ fi
 
 prefix="${SOUND_STORE_DIR:-$HOME/audio}"
 
-sound_files=( "$prefix"/**/*.* )
+sound_files=( "$prefix"/**/*.*  )
 sound_files=( "${sound_files[@]#"$prefix"/}" )
 sound_files=( "${sound_files[@]%.* }" )
 sound=( '' )
@@ -23,20 +23,9 @@ userID=( "$(id -u $(whoami))" )
 PROGRAM="${0##*/}"
 
 _finish () {
-  [[ True == $cleanup ]] &&
-  printf "line 28"
-  [[ True = "$cleanup" ]] &&
-  if compgen -G "/tmp/soundmenu.1000*" >/dev/null 2>&1 ;then
-    rmdir /tmp/soundmenu.*.*."$$".lock >/dev/null 2>&1
-    list_descendants () {
-      local children=$(ps -o pid= --ppid "$1")
-      for pid in $children
-      do
-	list_descendants "$pid"
-      done
-      echo "$children"
-    }
-    kill $(list_descendants $$)
+  [[ True == "$cleanup" ]] &&
+  if compgen -G "/tmp/soundmenu."$userID".*" >/dev/null 2>&1; then
+    rmdir /tmp/soundmenu.*.*.$$.lock >/dev/null 2>&1
   fi
   exit
 }
@@ -44,7 +33,7 @@ _finish () {
 _notify () {
   message=$1
   [[ "$notifyit" == 1 ]] && 
-  notify-send "$message" --icon=dialog-information || 
+  notify-send "$message" --icon=audio-x-generic || 
   printf '%s\n' "$message"
 }
 
@@ -53,14 +42,14 @@ _notify () {
 
 
 ## dmenu exits on KeyPress not KeyRelease.
-for sound in $(printf '%s\n' "${sound_files[@]}" | dmenu -f "$@"); do
+for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f "$@" ); do
   passel+=("$sound")
 done
 
-[[ -n $sound ]] || exit
-
 # Runs the _finish funtion on exit. 
 trap _finish EXIT
+
+[[ -n $sound ]] || exit
 
 ## Clearing old filelock(s). 
 umask 077
@@ -73,7 +62,7 @@ if test -n "$stalelock" ;then
   stalePID=( "$(printf $stalename | 
   sed -e "s/\/tmp\/soundmenu\.[0-9]\{1,6\}\?\..*\.//g")" )
   if [[ "$report" == *"$stalePID"* ]] ;then
-    kill "$stalePID" || exit 1
+    kill $(ps -o pid= --ppid "$stalePID" ) || exit 1
   else
     rmdir /tmp/soundmenu."$userID".* >/dev/null 2>&1 ||
     { _notify ":: Unable to clear old filelock"; exit 1; }
@@ -81,10 +70,10 @@ if test -n "$stalelock" ;then
 fi
 
 ## Adding a new filelock
-( mktemp -d "/tmp/soundmenu."$userID".XXXXXXXXXX"."$$".lock >/dev/null 2>&1 && cleanup=True ||
+( mktemp -d "/tmp/soundmenu."$userID".XXXXXXXXXX"."$$".lock >/dev/null 2>&1 ||
   { _notify ":: Unable to make filelock."; exit 1; } )
 
-cleanup=True
+cleanup="True"
 
 round=0
 for entry in "${passel[@]}"; do
@@ -92,3 +81,4 @@ for entry in "${passel[@]}"; do
   mpv "$prefix/$entry"
   round=`expr $round + 1`
 done
+exit
