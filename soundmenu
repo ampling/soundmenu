@@ -81,4 +81,3 @@ for entry in "${passel[@]}"; do
   mpv "$prefix/$entry"
   round=`expr $round + 1`
 done
-exit
