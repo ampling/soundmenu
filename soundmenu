@@ -42,7 +42,7 @@ _notify () {
 
 
 ## dmenu exits on KeyPress not KeyRelease.
-for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f "$@" ); do
+for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
   passel+=("$sound")
 done
 
