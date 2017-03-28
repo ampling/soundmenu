@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+##
+## Better than a soundboard.
+##
 
 shopt -s nullglob globstar failglob
 set -euo pipefail
@@ -6,9 +9,13 @@ set -euo pipefail
 arg1=${1:-} 
 arg2=${2:-} 
 notifyit=0
+# caseit=0
 
-if [[ '--notify' == "$arg1" ]] || [[ '--notify' == "$arg2" ]]; then
-  notifyit=1;
+hash notify-send 2>/dev/null && notifyit=1 ||
+  printf '%s\n' "w: cannot find libnotify."
+
+if [[ '-I' == "$arg1" ]] || [[ '-I' == "$arg2" ]]; then
+  # caseit=1
   shift
 fi
 
@@ -36,10 +43,6 @@ _notify () {
   notify-send "$message" --icon=audio-x-generic || 
   printf '%s\n' "$message"
 }
-
-( [[ "$notifyit" == 1 ]] & hash notify-send 2>/dev/null || 
-  { printf '%s\n' "e: cannot find libnotify."; exit 1; } )
-
 
 ## dmenu exits on KeyPress not KeyRelease.
 for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f "$@" ); do
@@ -81,3 +84,4 @@ for entry in "${passel[@]}"; do
   mpv "$prefix/$entry"
   round=`expr $round + 1`
 done
+exit
