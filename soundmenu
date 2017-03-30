@@ -85,8 +85,10 @@ if [[ $arg1 == *k* ]] || [[ $arg2 == *k* ]]; then
 fi
 
 ## dmenu exits on KeyPress not KeyRelease.
-for selection in $( printf '%s\n' "${sound_files[@]}" | dmenu -f "$@" ); do
+
+for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
   passel+=("$selection")
+
 done
 
 _clear; [[ -n $selection ]] || exit
