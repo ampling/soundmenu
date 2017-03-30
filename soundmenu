@@ -1,83 +1,108 @@
 #!/usr/bin/env bash
 
+##
+## A dynamic soundboard.
+##
+## [Ampling] [2016]
+##
+
+## DEPENDENCIES; mpv
+##               libnotify (optional)
+
 shopt -s nullglob globstar failglob
 set -euo pipefail
 
+version=soundmenu-0.2.2
+prefix=${SOUND_STORE_DIR:-$HOME/audio}
+
 arg1=${1:-} 
 arg2=${2:-} 
-notifyit=0
+sound_files=( $prefix/**/*.*  )
+sound_files=( ${sound_files[@]#"$prefix"/} )
+sound_files=( ${sound_files[@]%.* } )
+selection=''
+cleanup=''
+userID=$(id -u "$(whoami)")
 
-if [[ '--notify' == "$arg1" ]] || [[ '--notify' == "$arg2" ]]; then
-  notifyit=1;
+notifyit=0
+caseit=0
+usage="${0##*/} [-h help] [-k kill] [-I case insensitively off] [-v version]"
+
+hash notify-send 2>/dev/null && notifyit=1 ||
+  printf '%s\n' "w: cannot find libnotify."
+
+if [[ $arg1 == *v* ]] || [[ $arg2 == *v* ]]; then
+  printf '%s\n' "$version"; exit
+fi
+
+if [[ $arg1 == *h* ]] || [[ $arg2 == *h* ]]; then
+  printf '%s\n' "$usage"; exit 0
+fi
+
+if [[ $arg1 == *I* ]] || [[ $arg2 == *I* ]]; then
+  caseit=1
   shift
 fi
 
-prefix="${SOUND_STORE_DIR:-$HOME/audio}"
+_notify () {
+  message=$1
+  [[ $notifyit == 1 ]] && 
+  notify-send "$message" --icon=audio-x-generic || 
+  printf '%s\n' "$message"
+}
 
-sound_files=( "$prefix"/**/*.*  )
-sound_files=( "${sound_files[@]#"$prefix"/}" )
-sound_files=( "${sound_files[@]%.* }" )
-sound=( '' )
-cleanup=( '' )
-userID=( "$(id -u $(whoami))" )
-PROGRAM="${0##*/}"
+_clear () {
+  ## Clearing old filelock(s). 
+  umask 077
+  stalelock=${stalelock:-''}
+  stalelock=$(find /tmp -maxdepth 1 -name "soundmenu.$userID.*" -user "$(whoami)" -print -quit -type d) &&
+  if test -n "$stalelock" ; then
+    stalename=${stalelock%.*}
+    report=$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | grep "soundmenu" | grep -v "$$")
+    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/soundmenu\.[0-9]\{1,6\}\?\..*\.//g")
+    if [[ $report == *$stalePID* ]] ;then
+      kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
+    else
+      rmdir /tmp/soundmenu."$userID".* >/dev/null 2>&1 ||
+      { _notify ":: Unable to clear old filelock"; exit 1; }
+    fi
+  fi
+}
 
 _finish () {
   [[ True == "$cleanup" ]] &&
-  if compgen -G "/tmp/soundmenu."$userID".*" >/dev/null 2>&1; then
+  if compgen -G "/tmp/soundmenu.$userID.*" >/dev/null 2>&1; then
     rmdir /tmp/soundmenu.*.*.$$.lock >/dev/null 2>&1
   fi
   exit
 }
 
-_notify () {
-  message=$1
-  [[ "$notifyit" == 1 ]] && 
-  notify-send "$message" --icon=audio-x-generic || 
-  printf '%s\n' "$message"
-}
-
-( [[ "$notifyit" == 1 ]] & hash notify-send 2>/dev/null || 
-  { printf '%s\n' "e: cannot find libnotify."; exit 1; } )
-
-
-## dmenu exits on KeyPress not KeyRelease.
-for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
-  passel+=("$sound")
-done
-
 # Runs the _finish funtion on exit. 
 trap _finish EXIT
 
-[[ -n $sound ]] || exit
-
-## Clearing old filelock(s). 
-umask 077
-stalelock=( "${stalelock:-''}" )
-stalelock=( "$(find '/tmp' -maxdepth 1 -name "soundmenu."$userID".*" -user $(whoami) -print0  -quit -type d)" ) &&
-if test -n "$stalelock" ;then
-  stalename=${stalelock%.*}
-  report=( "$(ps -u $(id -u $(whoami)) aux | grep "bash" | 
-  grep "soundmenu" | grep -v "$$")" )
-  stalePID=( "$(printf $stalename | 
-  sed -e "s/\/tmp\/soundmenu\.[0-9]\{1,6\}\?\..*\.//g")" )
-  if [[ "$report" == *"$stalePID"* ]] ;then
-    kill $(ps -o pid= --ppid "$stalePID" ) || exit 1
-  else
-    rmdir /tmp/soundmenu."$userID".* >/dev/null 2>&1 ||
-    { _notify ":: Unable to clear old filelock"; exit 1; }
-  fi
+if [[ $arg1 == *k* ]] || [[ $arg2 == *k* ]]; then
+  printf '%s\n' "cleaning and exiting..."; _clear; exit
 fi
 
+## dmenu exits on KeyPress not KeyRelease.
+
+for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
+  passel+=("$selection")
+
+done
+
+_clear; [[ -n $selection ]] || exit
+
 ## Adding a new filelock
-( mktemp -d "/tmp/soundmenu."$userID".XXXXXXXXXX"."$$".lock >/dev/null 2>&1 ||
+( mktemp -d "/tmp/soundmenu.$userID.XXXXXXXXXX".$$.lock >/dev/null 2>&1 ||
   { _notify ":: Unable to make filelock."; exit 1; } )
 
-cleanup="True"
+cleanup=True
 
 round=0
 for entry in "${passel[@]}"; do
-  _notify "Sent "${passel[$round]}" via "mpv""
+  _notify "Sent ${passel[$round]} via mpv"
   mpv "$prefix/$entry"
-  round=`expr $round + 1`
+  round=$((round + 1))
 done
+exit 0
