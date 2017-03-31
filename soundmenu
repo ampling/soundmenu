@@ -41,7 +41,7 @@ if [[ $arg1 == *h* ]] || [[ $arg2 == *h* ]]; then
 fi
 
 ## HACK 
-if [[ $arg1 == *I* ]] || [[ $arg2 == *v* ]]; then
+if [[ $arg1 == *I* ]] || [[ $arg2 == *I* ]]; then
   menu_options=-f
 else
   menu_options=${@:-'-i'}
