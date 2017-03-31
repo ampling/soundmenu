@@ -41,7 +41,11 @@ if [[ $arg1 == *h* ]] || [[ $arg2 == *h* ]]; then
 fi
 
 ## HACK 
-[[ $arg1 == *I* ]] && menu_options=-f || menu_options=${@:-'-i'}
+if [[ $arg1 == *I* ]] || [[ $arg2 == *v* ]]; then
+  menu_options=-f
+else
+  menu_options=${@:-'-i'}
+fi
 
 _notify () {
   message=$1
