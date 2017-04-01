@@ -16,7 +16,7 @@ set -euo pipefail
 prefix=${SOUND_STORE_DIR:-$HOME/audio}
 media_player=${MEDIA_PLAYER:-mpv}
 
-version=soundmenu-0.2.3
+version=soundmenu-0.2.4
 sound_files=( $prefix/**/*.*  )
 sound_files=( ${sound_files[@]#"$prefix"/} )
 sound_files=( ${sound_files[@]%.* } )
@@ -27,7 +27,8 @@ selection=''
 cleanup=''
 notifyit=0
 userID=$(id -u "$(whoami)")
-usage="${0##*/} [-h help] [-k kill] [-I no case insensitively] [-v version] [<dmenu []>]"
+usage="${0##*/} [-h help] [-k kill] [-v version] [<dmenu []>]"
+# [-I no case insensitively]
 
 hash notify-send 2>/dev/null && notifyit=1 ||
   printf '%s\n' "w: cannot find libnotify."
@@ -38,13 +39,6 @@ fi
 
 if [[ $arg1 == *h* ]] || [[ $arg2 == *h* ]]; then
   printf '%s\n' "$usage"; exit 0
-fi
-
-## HACK 
-if [[ $arg1 == *I* ]] || [[ $arg2 == *I* ]]; then
-  menu_options=-f
-else
-  menu_options=${@:-'-i'}
 fi
 
 _notify () {
@@ -87,7 +81,7 @@ if [[ $arg1 == *k* ]] || [[ $arg2 == *k* ]]; then
 fi
 
 ## dmenu exits on KeyPress not KeyRelease.
-for selection in $( printf '%s\n' "${sound_files[@]}" | dmenu -f "$menu_options" ); do
+for selection in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
   passel+=("$selection")
 done
 
