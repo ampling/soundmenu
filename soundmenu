@@ -12,21 +12,23 @@
 shopt -s nullglob globstar failglob
 set -euo pipefail
 
-version=soundmenu-0.2.2
+## ADJUSTABLES
 prefix=${SOUND_STORE_DIR:-$HOME/audio}
+media_player=${MEDIA_PLAYER:-mpv}
 
-arg1=${1:-} 
-arg2=${2:-} 
+version=soundmenu-0.2.4
 sound_files=( $prefix/**/*.*  )
 sound_files=( ${sound_files[@]#"$prefix"/} )
 sound_files=( ${sound_files[@]%.* } )
+
+arg1=${1:-} 
+arg2=${2:-} 
 selection=''
 cleanup=''
-userID=$(id -u "$(whoami)")
-
 notifyit=0
-caseit=0
-usage="${0##*/} [-h help] [-k kill] [-I case insensitively off] [-v version]"
+userID=$(id -u "$(whoami)")
+usage="${0##*/} [-h help] [-k kill] [-v version] [<dmenu []>]"
+# [-I no case insensitively]
 
 hash notify-send 2>/dev/null && notifyit=1 ||
   printf '%s\n' "w: cannot find libnotify."
@@ -39,15 +41,9 @@ if [[ $arg1 == *h* ]] || [[ $arg2 == *h* ]]; then
   printf '%s\n' "$usage"; exit 0
 fi
 
-if [[ $arg1 == *I* ]] || [[ $arg2 == *I* ]]; then
-  caseit=1
-  shift
-fi
-
 _notify () {
   message=$1
-  [[ $notifyit == 1 ]] && 
-  notify-send "$message" --icon=audio-x-generic || 
+  [[ $notifyit == 1 ]] && notify-send "$message" --icon=audio-x-generic
   printf '%s\n' "$message"
 }
 
@@ -85,8 +81,7 @@ if [[ $arg1 == *k* ]] || [[ $arg2 == *k* ]]; then
 fi
 
 ## dmenu exits on KeyPress not KeyRelease.
-
-for sound in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
+for selection in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
   passel+=("$selection")
 
 done
@@ -101,8 +96,8 @@ cleanup=True
 
 round=0
 for entry in "${passel[@]}"; do
-  _notify "Sent ${passel[$round]} via mpv"
-  mpv "$prefix/$entry"
+  _notify "Sending ${passel[$round]} to $media_player."
+  $media_player "$prefix/$entry"
   round=$((round + 1))
 done
 exit 0
