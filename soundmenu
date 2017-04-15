@@ -1,50 +1,43 @@
 #!/usr/bin/env bash
 
 ##
-## A dynamic soundboard.
+## A dynamic sound board.
 ##
-## [Ampling] [2016]
+## [Ampling] [2016-2017]
 ##
 
-## DEPENDENCIES; mpv
-##               libnotify (optional)
+## DEPENDENCIES; dmenu, mpv
+## (optional)     libnotify (optional)
 
 shopt -s nullglob globstar failglob
 set -euo pipefail
 
-## ADJUSTABLES
+## SETTINGS
 prefix=${SOUND_STORE_DIR:-$HOME/audio}
 media_player=${MEDIA_PLAYER:-mpv}
-
-version=soundmenu-0.2.4
-sound_files=( $prefix/**/*.*  )
-sound_files=( ${sound_files[@]#"$prefix"/} )
-sound_files=( ${sound_files[@]%.* } )
+version=soundmenu-0.2.6
 
 arg1=${1:-} 
 arg2=${2:-} 
 selection=''
 cleanup=''
-notifyit=0
+myname=${0##*/}
+sound_files=( $prefix/**/*.* )
+sound_files=( ${sound_files[@]#"$prefix"/} )
+sound_files=( ${sound_files[@]%.* } )
 userID=$(id -u "$(whoami)")
-usage="${0##*/} [-h help] [-k kill] [-v version] [<dmenu []>]"
+usage="$myname [-h help] [-k kill] [-v version] [<dmenu []>]"
 # [-I no case insensitively]
 
-hash notify-send 2>/dev/null && notifyit=1 ||
-  printf '%s\n' "w: cannot find libnotify."
+## Try libnotify first.
+{ hash notify-send 2>/dev/null && notifyit=1; } || 
+{ printf '%s\n' "w: libnotify not found" && notifyit=0; }
 
-if [[ $arg1 == *v* ]] || [[ $arg2 == *v* ]]; then
-  printf '%s\n' "$version"; exit
-fi
-
-if [[ $arg1 == *h* ]] || [[ $arg2 == *h* ]]; then
-  printf '%s\n' "$usage"; exit 0
-fi
 
 _notify () {
   message=$1
   [[ $notifyit == 1 ]] && notify-send "$message" --icon=audio-x-generic
-  printf '%s\n' "$message"
+  printf '%s\n' "$message" 
 }
 
 _clear () {
@@ -73,17 +66,21 @@ _finish () {
   exit
 }
 
+hash "$media_player" || { _notify "e: $media_player not found." && exit; }
+
+[[ $arg1 == *v* || $arg2 == *v* ]] && { _notify "$version"; exit; } 
+[[ $arg1 == *h* || $arg2 == *h* ]] && { printf '%s\n' "$usage"; exit; }
+[[ ! -e "$prefix" ]] && { _notify "e: $prefix not found." && exit; }
+[[ $arg1 == *k* || $arg2 == *k* ]] &&
+{ printf '%s\n' "cleaning and exiting..."; _clear; exit; }
+
+
 # Runs the _finish funtion on exit. 
 trap _finish EXIT
-
-if [[ $arg1 == *k* ]] || [[ $arg2 == *k* ]]; then
-  printf '%s\n' "cleaning and exiting..."; _clear; exit
-fi
 
 ## dmenu exits on KeyPress not KeyRelease.
 for selection in $( printf '%s\n' "${sound_files[@]}" | dmenu -f -i "$@" ); do
   passel+=("$selection")
-
 done
 
 _clear; [[ -n $selection ]] || exit
