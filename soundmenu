@@ -6,8 +6,8 @@
 ## [Ampling] [2016-2017]
 ##
 
-## DEPENDENCIES; dmenu, mpv
-## (optional)     libnotify (optional)
+## DEPENDENCIES;  dmenu, mpv
+## (optional)	  libnotify (optional)
 
 shopt -s nullglob globstar failglob
 set -euo pipefail
@@ -30,7 +30,7 @@ usage="$myname [-h help] [-k kill] [-v version] [<dmenu []>]"
 # [-I no case insensitively]
 
 ## Try libnotify first.
-{ hash notify-send 2>/dev/null && notifyit=1; } || 
+{ hash notify-send &>/dev/null && notifyit=1; } || 
 { printf '%s\n' "w: libnotify not found" && notifyit=0; }
 
 
@@ -41,18 +41,19 @@ _notify () {
 }
 
 _clear () {
-  ## Clearing old filelock(s). 
+  ## Removes old filelock(s). 
   umask 077
   stalelock=${stalelock:-''}
-  stalelock=$(find /tmp -maxdepth 1 -name "soundmenu.$userID.*" -user "$(whoami)" -print -quit -type d) &&
-  if test -n "$stalelock" ; then
+  stalelock=$(find /tmp -maxdepth 1 -name "$myname.$userID.*" -user "$(whoami)" -print -quit -type d) &&
+  if [[ -n "$stalelock" ]]; then
     stalename=${stalelock%.*}
-    report=$(ps -u "$(id -u "$(whoami)")" aux | grep "bash" | grep "soundmenu" | grep -v "$$")
-    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/soundmenu\.[0-9]\{1,6\}\?\..*\.//g")
-    if [[ $report == *$stalePID* ]] ;then
-      kill "$(ps -o pid= --ppid "$stalePID" )" || exit 1
+    report=$(pgrep -fa "$myname" | grep bash | sed 's/\s.*$//')
+    stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$myname\.[0-9]\{1,6\}\?\..*\.//g")
+    parentID=$(ps -o pid= --ppid "$stalePID" )
+    if [[ $report == *"$stalePID"* ]]; then
+      kill "$parentID" &>/dev/null || exit 1
     else
-      rmdir /tmp/soundmenu."$userID".* >/dev/null 2>&1 ||
+      rmdir /tmp/soundmenu."$userID".* &>/dev/null ||
       { _notify ":: Unable to clear old filelock"; exit 1; }
     fi
   fi
@@ -60,9 +61,8 @@ _clear () {
 
 _finish () {
   [[ True == "$cleanup" ]] &&
-  if compgen -G "/tmp/soundmenu.$userID.*" >/dev/null 2>&1; then
-    rmdir /tmp/soundmenu.*.*.$$.lock >/dev/null 2>&1
-  fi
+  compgen -G /tmp/soundmenu."$userID".* &>/dev/null &&
+  rmdir /tmp/soundmenu.*.*."$$".lock &>/dev/null
   exit
 }
 
@@ -86,7 +86,7 @@ done
 _clear; [[ -n $selection ]] || exit
 
 ## Adding a new filelock
-( mktemp -d "/tmp/soundmenu.$userID.XXXXXXXXXX".$$.lock >/dev/null 2>&1 ||
+( mktemp -d "/tmp/soundmenu.$userID.XXXXXXXXXX".$$.lock &>/dev/null ||
   { _notify ":: Unable to make filelock."; exit 1; } )
 
 cleanup=True
