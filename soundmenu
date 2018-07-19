@@ -12,8 +12,8 @@
 shopt -s nullglob globstar failglob
 set -euo pipefail
 
-## SETTINGS
 media_player=${MEDIA_PLAYER:-mpv}
+media_player_options=${MEDIA_PLAYER_OPTIONS:-'--no-video'}
 prefix=${SOUND_STORE_DIR:-$HOME/audio}
 version=soundmenu-0.2.8
 
@@ -36,7 +36,7 @@ usage="$my_name [-h help] [-k kill] [-v version] [[] dmenu]"
 
 _notify () {
   message=$1
-  [[ $notifyit -eq 0 ]] && notify-send "$message" --icon=audio-x-generic
+  [[ $notifyit -eq 0 ]] && notify-send "$message" --icon=audio-x-generic &
   printf '%s\n' "$message"
 }
 
@@ -96,6 +96,7 @@ round=0
 
 for entry in "${passel[@]}"; do
   _notify "${passel[$round]} sent to $media_player."
-  $media_player "$prefix/$entry"
+  $media_player $media_player_options "$prefix/$entry"
+
   ((round+=1))
 done
