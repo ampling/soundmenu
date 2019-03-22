@@ -61,6 +61,7 @@ _finish () {
   [[ $cleanup == True ]] &&
   compgen -G /tmp/soundmenu."$userID".* &>/dev/null &&
   rmdir /tmp/soundmenu.*.*."$$".lock &>/dev/null
+  # End nested subshells.
   kill -HUP 0
 }
 
