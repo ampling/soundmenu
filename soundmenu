@@ -51,8 +51,7 @@ _clear () {
     stalePID=$(printf '%s' "$stalename" | sed -e "s/\/tmp\/$my_name\.[0-9]\{1,6\}\?\..*\.//g")
     [[ $report == *"$stalePID"* ]] &&
     {
-    parentID=$(ps -o pid= --ppid "$stalePID")
-    kill "$parentID" &>/dev/null || _notify "e: Unable to kill old process"
+    kill "$stalePID" &>/dev/null || _notify "e: Unable to kill old process"
     } || 
     rmdir /tmp/soundmenu."$userID".* &>/dev/null || _notify "e: Unable to clear old filelock"
   fi
@@ -62,7 +61,7 @@ _finish () {
   [[ $cleanup == True ]] &&
   compgen -G /tmp/soundmenu."$userID".* &>/dev/null &&
   rmdir /tmp/soundmenu.*.*."$$".lock &>/dev/null
-  exit 0
+  kill -HUP 0
 }
 
 
